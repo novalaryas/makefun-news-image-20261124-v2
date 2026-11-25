@@ -4,7 +4,7 @@
 Builds the broadsheet front page "THE WORLD" — a summary of
 Tuesday 24 November 2026's world news — as a single PNG image.
 
-The page is rendered text (see gen_image.py in the work notes), shipped
+The page is rendered text (see gen_image_v2.py in the work notes), shipped
 here as image.png. This program just places those exact bytes at the
 output path. It is deterministic and offline: no network, no clock,
 no randomness, so every run writes identical bytes.
