@@ -1,46 +1,45 @@
 #!/usr/bin/env python3
 """make.fun news-image-20261124 entry.
 
-Writes the broadsheet front page "THE WORLD" — a summary of
+Builds the broadsheet front page "THE WORLD" — a summary of
 Tuesday 24 November 2026's world news — as a single PNG image.
 
-Deterministic and offline: the image is embedded in this repository as
-image.png and is copied byte-for-byte to the output path. No network,
-no randomness, no timestamps: every run produces identical bytes.
+The page is rendered text (see gen_image.py in the work notes), shipped
+here as image.png. This program just places those exact bytes at the
+output path. It is deterministic and offline: no network, no clock,
+no randomness, so every run writes identical bytes.
 """
 
-import os
-import shutil
+import hashlib
 import sys
+from pathlib import Path
 
-SOURCE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "image.png")
-OUTPUT_DIR = os.environ.get("ENTRY_OUTPUT_DIR", "/output")
-OUTPUT_PATH = os.path.join(OUTPUT_DIR, "entry.png")
+HERE = Path(__file__).resolve().parent
+IMAGE = HERE / "image.png"
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
 
 
-def main() -> int:
-    if not os.path.isfile(SOURCE):
-        print(f"error: source image not found: {SOURCE}", file=sys.stderr)
-        return 1
+def build(output_dir: str) -> Path:
+    """Copy image.png to <output_dir>/entry.png; return the target path."""
+    data = IMAGE.read_bytes()
+    if not data.startswith(PNG_MAGIC):
+        raise SystemExit("error: image.png is not a PNG file")
+    target_dir = Path(output_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target = target_dir / "entry.png"
+    target.write_bytes(data)
+    digest = hashlib.sha256(target.read_bytes()).hexdigest()
+    print(f"wrote {target} ({len(data)} bytes, sha256 {digest})")
+    return target
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    shutil.copyfile(SOURCE, OUTPUT_PATH)
 
-    size = os.path.getsize(OUTPUT_PATH)
-    source_size = os.path.getsize(SOURCE)
-    if size != source_size:
-        print(
-            f"error: output size {size} does not match source size {source_size}",
-            file=sys.stderr,
-        )
-        return 1
-    with open(OUTPUT_PATH, "rb") as fh:
-        if fh.read(8) != b"\x89PNG\r\n\x1a\n":
-            print("error: output is not a PNG file", file=sys.stderr)
-            return 1
-    print(f"wrote {OUTPUT_PATH} ({size} bytes, 1024x1024 PNG)")
+def main(argv) -> int:
+    out = argv[1] if len(argv) > 1 else None
+    import os
+
+    build(out or os.environ.get("ENTRY_OUTPUT_DIR", "/output"))
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv))
